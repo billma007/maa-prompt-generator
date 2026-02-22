@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, watch } from 'vue';
 import { TASK_TYPES, type Task, type TaskType } from './types.ts';
 
 // Simple ID generator
@@ -9,12 +9,28 @@ const promptResult = ref('');
 const resultVisible = ref(false);
 
 const addTask = (type: TaskType) => {
+  const currentTasks = tasks.value;
+  const closeIndex = currentTasks.findIndex(t => t.type === 'Close');
+  
+  if (type === 'Close') {
+    if (closeIndex !== -1) {
+      alert('“关闭游戏”任务已存在！');
+      return;
+    }
+  }
+
   const newTask: Task = {
     id: String(idCounter++),
     type,
     settings: getDefaultSettings(type),
   };
-  tasks.value.push(newTask);
+
+  if (closeIndex !== -1) {
+    // Insert before Close
+    currentTasks.splice(closeIndex, 0, newTask);
+  } else {
+    currentTasks.push(newTask);
+  }
 };
 
 const removeTask = (index: number) => {
@@ -23,16 +39,48 @@ const removeTask = (index: number) => {
 
 const moveTask = (index: number, direction: 'up' | 'down') => {
   const currentTasks = tasks.value;
+  // If moving the Close task, prevent it (it's pinned to bottom)
+  if (currentTasks[index].type === 'Close') return;
+
   if (direction === 'up' && index > 0) {
     const temp = currentTasks[index] as Task;
     currentTasks[index] = currentTasks[index - 1] as Task;
     currentTasks[index - 1] = temp;
   } else if (direction === 'down' && index < currentTasks.length - 1) {
+    // Prevent moving below Close
+    if (currentTasks[index + 1].type === 'Close') return;
+
     const temp = currentTasks[index] as Task;
     currentTasks[index] = currentTasks[index + 1] as Task;
     currentTasks[index + 1] = temp;
   }
 };
+
+// Enforce "Close Game" task to be single and always at the end
+watch(tasks, (newVal) => {
+    const closeIndices: number[] = [];
+    newVal.forEach((t, i) => { 
+        if (t.type === 'Close') closeIndices.push(i);
+    });
+
+    if (closeIndices.length > 0) {
+        // Remove duplicates if any (keep the last added one usually, or first? Let's keep first found)
+        if (closeIndices.length > 1) {
+            // Remove all except the first one found
+            for (let i = closeIndices.length - 1; i > 0; i--) {
+                newVal.splice(closeIndices[i], 1);
+            }
+        }
+        
+        // Move the single Close task to the end if not already there
+        const currentCloseIndex = newVal.findIndex(t => t.type === 'Close');
+        if (currentCloseIndex !== -1 && currentCloseIndex !== newVal.length - 1) {
+            const closeTask = newVal[currentCloseIndex];
+            newVal.splice(currentCloseIndex, 1);
+            newVal.push(closeTask);
+        }
+    }
+}, { deep: true });
 
 const getDefaultSettings = (type: TaskType) => {
   switch (type) {
@@ -252,7 +300,20 @@ const handleFileUpload = (event: Event) => {
   const input = event.target as HTMLInputElement;
   const file = input.files?.[0];
   if (!file) return;
+  readFile(file);
+  input.value = '';
+};
 
+const handleDrop = (event: DragEvent) => {
+    const file = event.dataTransfer?.files[0];
+    if (file && file.name.endsWith('.json')) {
+        readFile(file);
+    } else if (file) {
+        alert('请拖入有效的 .json 配置文件');
+    }
+};
+
+const readFile = (file: File) => {
   const reader = new FileReader();
   reader.onload = (e) => {
     try {
@@ -267,8 +328,6 @@ const handleFileUpload = (event: Event) => {
     } catch (err) {
       alert('文件解析失败：无效的 JSON 文件');
     }
-    // Reset input value so same file can be selected again
-    input.value = '';
   };
   reader.readAsText(file);
 };
@@ -276,7 +335,7 @@ const handleFileUpload = (event: Event) => {
 </script>
 
 <template>
-  <div class="container mx-auto p-4 max-w-2xl text-left">
+  <div class="container mx-auto p-4 max-w-2xl text-left min-h-screen" @dragover.prevent @drop.prevent="handleDrop">
     <h1 class="text-3xl font-bold mb-6 text-center text-blue-400">MAA Prompt Generator</h1>
     
     <div class="mb-6 flex flex-wrap gap-2 justify-center">
@@ -285,17 +344,8 @@ const handleFileUpload = (event: Event) => {
             + {{ t.label }}
         </button>
     </div>
-
-    <!-- Manage Config -->
-    <div class="flex justify-end gap-2 mb-4">
-      <input type="file" ref="uploadConfigInput" @change="handleFileUpload" accept=".json" class="hidden" />
-      <button @click="triggerUpload" class="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded text-sm text-gray-300 flex items-center gap-1 transition">
-         <span>📂</span> 导入配置
-      </button>
-      <button @click="downloadConfig" class="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded text-sm text-gray-300 flex items-center gap-1 transition">
-         <span>💾</span> 导出配置
-      </button>
-    </div>
+    
+    <input type="file" ref="uploadConfigInput" @change="handleFileUpload" accept=".json" class="hidden" />
 
     <!-- Task List -->
     <div v-for="(task, index) in tasks" :key="task.id" 
@@ -493,9 +543,15 @@ const handleFileUpload = (event: Event) => {
     </div>
 
     <!-- Generate Button -->
-    <div class="mt-8 text-center sticky bottom-4 z-10">
+    <div class="mt-8 text-center sticky bottom-4 z-10 flex justify-center gap-4 bg-gray-900/80 p-4 rounded-xl backdrop-blur-sm border border-gray-700/50">
+        <button @click="triggerUpload" class="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-200 font-bold rounded-lg shadow-lg transform transition hover:scale-105 flex items-center gap-2 text-sm">
+             <span>📂</span> 导入
+        </button>
         <button @click="getPrompt" class="px-8 py-3 bg-gradient-to-r from-green-600 to-green-500 rounded-full hover:from-green-500 hover:to-green-400 text-white font-bold text-lg shadow-xl transform transition hover:scale-105">
             生成 Prompt
+        </button>
+        <button @click="downloadConfig" class="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-200 font-bold rounded-lg shadow-lg transform transition hover:scale-105 flex items-center gap-2 text-sm">
+             <span>💾</span> 导出
         </button>
     </div>
 
