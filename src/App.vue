@@ -230,6 +230,48 @@ const copyToClipboard = () => {
 const selectText = (event: Event) => {
   (event.target as HTMLTextAreaElement).select();
 };
+
+const downloadConfig = () => {
+  const data = JSON.stringify(tasks.value, null, 2);
+  const blob = new Blob([data], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `maa-config-${new Date().toISOString().slice(0, 10)}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+};
+
+const uploadConfigInput = ref<HTMLInputElement | null>(null);
+
+const triggerUpload = () => {
+  uploadConfigInput.value?.click();
+};
+
+const handleFileUpload = (event: Event) => {
+  const file = (event.target as HTMLInputElement).files?.[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const content = e.target?.result as string;
+      const parsed = JSON.parse(content);
+      if (Array.isArray(parsed)) {
+        tasks.value = parsed;
+        alert('配置已成功加载！');
+      } else {
+        alert('文件格式错误：必须是任务数组');
+      }
+    } catch (err) {
+      alert('文件解析失败：无效的 JSON 文件');
+    }
+  };
+  reader.readAsText(file);
+  // Reset input value so same file can be selected again
+  (event.target as HTMLInputElement).value = '';
+};
+
 </script>
 
 <template>
@@ -241,6 +283,17 @@ const selectText = (event: Event) => {
           class="px-3 py-2 bg-blue-600 rounded hover:bg-blue-500 text-white text-sm transition font-medium shadow-md">
             + {{ t.label }}
         </button>
+    </div>
+
+    <!-- Manage Config -->
+    <div class="flex justify-end gap-2 mb-4">
+      <input type="file" ref="uploadConfigInput" @change="handleFileUpload" accept=".json" class="hidden" />
+      <button @click="triggerUpload" class="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded text-sm text-gray-300 flex items-center gap-1 transition">
+         <span>📂</span> 导入配置
+      </button>
+      <button @click="downloadConfig" class="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded text-sm text-gray-300 flex items-center gap-1 transition">
+         <span>💾</span> 导出配置
+      </button>
     </div>
 
     <!-- Task List -->
