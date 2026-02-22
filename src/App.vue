@@ -229,7 +229,7 @@ const getPrompt = () => {
 
       case 'Shop':
         if (s.creditShop) taskLines.push('- 信用购物');
-        if (s.ignoreBlacklistOverflow) taskLines.push('- 信用溢出时无视黑名单');
+        if (s.ignoreBlacklistOverflow) taskLines.push('- 信用溢出时无视blacklist');
         if (s.earnCredit) taskLines.push('- 借助战赚信用');
         
         {
@@ -518,7 +518,7 @@ const readFile = (file: File) => {
         <div v-if="task.type === 'Shop'">
              <div class="space-y-2">
                 <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" v-model="task.settings.creditShop"> 信用购物</label>
-                <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" v-model="task.settings.ignoreBlacklistOverflow"> 信用溢出时无视黑名单</label>
+                <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" v-model="task.settings.ignoreBlacklistOverflow"> 信用溢出时无视blacklist</label>
                 <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" v-model="task.settings.earnCredit"> 借助战赚信用</label>
              </div>
              
