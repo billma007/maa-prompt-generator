@@ -5,6 +5,7 @@ import { TASK_TYPES, type Task, type TaskType } from './types.ts';
 // Simple ID generator
 let idCounter = 0;
 const tasks = ref<Task[]>([]);
+const configName = ref('');
 const promptResult = ref('');
 const resultVisible = ref(false);
 
@@ -162,7 +163,7 @@ const getDefaultSettings = (type: TaskType) => {
 
 const getPrompt = () => {
   let lines = [];
-  lines.push('请基于（参考文件路径）内的实例配置、使用文档和参考实例，帮我写一个如下的自动化脚本：');
+  lines.push('请基于（参考文件路径）内的所有帮助你编写的文档，帮我写一个如下的自动化脚本：');
   
   tasks.value.forEach((task, index) => {
     let taskLines = [];
@@ -268,7 +269,8 @@ const getPrompt = () => {
     }
   });
 
-  lines.push('\n如果你没找到相关功能则告诉我并忽略，然后将你能编写的内容编写到一个配置文件中。这个配置文件用途是：（配置名称）。当我将来说帮我完成（配置名称）时，则运行这个配置文件');
+  const finalName = configName.value.trim() || '（配置文件）';
+  lines.push(`\n如果你没找到相关功能则告诉我并忽略，然后将你能编写的内容编写到一个配置文件中。这个配置文件用途是：${finalName}。当我将来说帮我完成${finalName}时，则运行这个配置文件`);
   
   promptResult.value = lines.join('\n');
   resultVisible.value = true;
@@ -343,6 +345,11 @@ const readFile = (file: File) => {
   <div class="container mx-auto p-4 max-w-2xl text-left min-h-screen" @dragover.prevent @drop.prevent="handleDrop">
     <h1 class="text-3xl font-bold mb-6 text-center text-blue-400">MAA Prompt Generator</h1>
     
+    <div class="mb-4 flex flex-col items-center">
+      <label class="text-gray-400 mb-1 text-sm">配置名称 (可选)</label>
+      <input v-model="configName" type="text" placeholder="配置文件" class="bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white w-full max-w-xs focus:outline-none focus:border-blue-500 text-center placeholder-gray-500" />
+    </div>
+
     <div class="mb-6 flex flex-wrap gap-2 justify-center">
         <button v-for="t in TASK_TYPES" :key="t.type" @click="addTask(t.type)" 
           class="px-3 py-2 bg-blue-600 rounded hover:bg-blue-500 text-white text-sm transition font-medium shadow-md">
