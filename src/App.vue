@@ -40,7 +40,7 @@ const removeTask = (index: number) => {
 const moveTask = (index: number, direction: 'up' | 'down') => {
   const currentTasks = tasks.value;
   // If moving the Close task, prevent it (it's pinned to bottom)
-  if (currentTasks[index].type === 'Close') return;
+  if (currentTasks[index]?.type === 'Close') return;
 
   if (direction === 'up' && index > 0) {
     const temp = currentTasks[index] as Task;
@@ -48,7 +48,7 @@ const moveTask = (index: number, direction: 'up' | 'down') => {
     currentTasks[index - 1] = temp;
   } else if (direction === 'down' && index < currentTasks.length - 1) {
     // Prevent moving below Close
-    if (currentTasks[index + 1].type === 'Close') return;
+    if (currentTasks[index + 1]?.type === 'Close') return;
 
     const temp = currentTasks[index] as Task;
     currentTasks[index] = currentTasks[index + 1] as Task;
@@ -68,7 +68,10 @@ watch(tasks, (newVal) => {
         if (closeIndices.length > 1) {
             // Remove all except the first one found
             for (let i = closeIndices.length - 1; i > 0; i--) {
-                newVal.splice(closeIndices[i], 1);
+                const idx = closeIndices[i];
+                if (idx !== undefined) {
+                    newVal.splice(idx, 1);
+                }
             }
         }
         
@@ -76,8 +79,10 @@ watch(tasks, (newVal) => {
         const currentCloseIndex = newVal.findIndex(t => t.type === 'Close');
         if (currentCloseIndex !== -1 && currentCloseIndex !== newVal.length - 1) {
             const closeTask = newVal[currentCloseIndex];
-            newVal.splice(currentCloseIndex, 1);
-            newVal.push(closeTask);
+            if (closeTask) {
+                newVal.splice(currentCloseIndex, 1);
+                newVal.push(closeTask);
+            }
         }
     }
 }, { deep: true });
