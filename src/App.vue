@@ -249,7 +249,8 @@ const triggerUpload = () => {
 };
 
 const handleFileUpload = (event: Event) => {
-  const file = (event.target as HTMLInputElement).files?.[0];
+  const input = event.target as HTMLInputElement;
+  const file = input.files?.[0];
   if (!file) return;
 
   const reader = new FileReader();
@@ -266,10 +267,10 @@ const handleFileUpload = (event: Event) => {
     } catch (err) {
       alert('文件解析失败：无效的 JSON 文件');
     }
+    // Reset input value so same file can be selected again
+    input.value = '';
   };
   reader.readAsText(file);
-  // Reset input value so same file can be selected again
-  (event.target as HTMLInputElement).value = '';
 };
 
 </script>
